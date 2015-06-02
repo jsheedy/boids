@@ -1,5 +1,7 @@
 'use strict';
 
+var boids = null;
+
 // core boid object
 var Boid = function(x, y) {
     // tweakables
@@ -13,8 +15,11 @@ var Boid = function(x, y) {
     this.velocity = Util.randomVector(-10, 10).normalize().mult(this.startingSpeed);
     this.acceleration = new Vector(0, 0);
 
+    this.mass = 1;
+
     // boid position update
     this.update = function() {
+
         // reset acceleration
         this.acceleration.mult(0);
 
@@ -33,13 +38,33 @@ var Boid = function(x, y) {
 
         // adjust position
         this.position.add(this.velocity);
+
+        // eat nearby boids
+        this.eat();
     };
 
     // render boid on canvas
     this.render = function(context) {
         var x = this.position.x % context.canvas.width,
             y = this.position.y % context.canvas.height;
-        context.fillRect(x, y, 1, 1);
+        context.fillRect(x, y, this.mass, this.mass);
+    };
+
+    this.eat = function() {
+        for(var i=0; i<boids.length; i++) {
+            var other = boids[i];
+            if (other === this) {
+                continue;
+            }
+            var diff = new Vector(this.position.x, this.position.y);
+            diff = diff.sub(other.position);
+            if (diff.magnitude() < 1) {
+                console.log('chomp');
+                this.mass += other.mass;
+                boids.splice(i, 1);
+                break;
+            }
+        }
     };
 
     function separation() {
@@ -121,19 +146,19 @@ var Util = {
         var swarm = [];
         for (i = 0; i < num; i++) {
             point = Util.randomPoint();
-            swarm.push(new Boid(point[0], point[1]))
+            swarm.push(new Boid(point[0], point[1]));
         }
         return swarm;
     }
 };
 
 var init = function() {
+    // create swarm
+    boids = Util.generateSwarm(100);
+
     // grab canvas/context
     var canvas = Util.getCanvas();
     var context = canvas.getContext('2d');
-
-    // create swarm
-    var boids = Util.generateSwarm(100);
 
     // loop forever
     var loop = setInterval(function() {
